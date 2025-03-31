@@ -32,24 +32,29 @@ func NewYcloud() *Ycloud {
 func (y *Ycloud) Process(msg *amqp.Delivery) error {
 	switch msg.RoutingKey {
 	case "otp.call":
-		return nil
-		//return y.callOTP(msg)
+		return y.OTP(msg)
 	case "otp.sms":
-		return y.smsOTP(msg)
+		return y.OTP(msg)
 	case "event.sms":
 		//return y.eventSms(msg)
-		return nil
+		return y.eventSms(msg)
 	default:
 		return fmt.Errorf("invalid routing key: %s for kavenegar provider", msg.RoutingKey)
 	}
 }
 
-func (y *Ycloud) smsOTP(msg *amqp.Delivery) error {
-	var data SmsOTP
+func (y *Ycloud) OTP(msg *amqp.Delivery) error {
+	var data OTP
 
 	err := json.Unmarshal(msg.Body, &data)
 	if err != nil {
 		return err
+	}
+	if data.Data.Channel == "" {
+		data.Data.Channel = "sms"
+	}
+	if data.Data.Language == "" {
+		data.Data.Language = "en"
 	}
 	if err = y.validator.Struct(data); err != nil {
 		return err
@@ -64,11 +69,14 @@ func (y *Ycloud) smsOTP(msg *amqp.Delivery) error {
 		return fmt.Errorf("iran number %s does not allowd to send sms with ycloud provider", numObj.Masked)
 	}
 
-	url := "https://api.ycloud.com/v2/sms"
-	body, _ := json.Marshal(SMSOTPRequest{
+	url := "https://api.ycloud.com/v2/verify/verifications"
+	body, _ := json.Marshal(OTPRequest{
+		Channel:    data.Data.Channel,
 		To:         numObj.Masked,
-		Text:       data.Data.Message,
+		Code:       data.Data.Code,
+		Brand:      data.Data.Brand,
 		ExternalID: uuid.New().String(),
+		Language:   data.Data.Language,
 	})
 
 	response, err := request(url, "post", body, y.apiKey)
@@ -76,7 +84,46 @@ func (y *Ycloud) smsOTP(msg *amqp.Delivery) error {
 		return err
 	}
 
-	var responseJson SMSOTPResponse
+	var responseJson OTPResponse
+	err = json.Unmarshal(response, &responseJson)
+	if err != nil {
+		fmt.Println("Error unmarshalling response:", err)
+		return err
+	}
+	//	TODO: log in db
+	return nil
+}
+func (y *Ycloud) eventSms(msg *amqp.Delivery) error {
+	var data Event
+	err := json.Unmarshal(msg.Body, &data)
+	if err != nil {
+		return err
+	}
+	if err = y.validator.Struct(data); err != nil {
+		return err
+	}
+	numObj, err := y.phoneNumberParser.Parse(data.Data.To)
+	if err != nil {
+		return err
+	}
+
+	if numObj.IsIranNumber() {
+		return fmt.Errorf("iran number %s does not allowd to send sms with ycloud provider", numObj.Masked)
+	}
+
+	url := "https://api.ycloud.com/v2/sms"
+
+	body, _ := json.Marshal(EventSmsRequest{
+		To:         numObj.Masked,
+		Text:       data.Data.Message,
+		ExternalID: uuid.New().String(),
+	})
+	response, err := request(url, "post", body, y.apiKey)
+	if err != nil {
+		return err
+	}
+
+	var responseJson EventSmsResponse
 	err = json.Unmarshal(response, &responseJson)
 	if err != nil {
 		fmt.Println("Error unmarshalling response:", err)
