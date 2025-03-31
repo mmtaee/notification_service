@@ -1,14 +1,21 @@
-package models
+package ycloud
 
 import "time"
 
-type YCloudOTPRequest struct {
+type SmsOTP struct {
+	Data struct {
+		To      string `json:"to" validate:"required"`
+		Message string `json:"message" validate:"required"`
+	} `json:"data"`
+}
+
+type SMSOTPRequest struct {
 	To         string `json:"to"`
 	Text       string `json:"text"`
 	ExternalID string `json:"externalId"`
 }
 
-type YCloudOTPResponse struct {
+type SMSOTPResponse struct {
 	ID             string    `json:"id"`
 	To             string    `json:"to"`
 	Text           string    `json:"text"`

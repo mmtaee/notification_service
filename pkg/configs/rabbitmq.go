@@ -12,6 +12,7 @@ type RabbitMQConfig struct {
 	Password string
 	Vhost    string
 	Exchange string
+	Queue    string
 }
 
 func loadRabbitMQ() RabbitMQConfig {
@@ -22,8 +23,9 @@ func loadRabbitMQ() RabbitMQConfig {
 	rabbitMQPassword := os.Getenv("RABBITMQ_PASSWORD")
 	rabbitMQVhost := os.Getenv("RABBITMQ_VHOST")
 	rabbitMQExchange := os.Getenv("RABBITMQ_EXCHANGE")
+	rabbitMQQueue := os.Getenv("RABBITMQ_QUEUE")
 
-	if rabbitMQHost == "" || rabbitMQUser == "" || rabbitMQPassword == "" || rabbitMQExchange == "" {
+	if rabbitMQHost == "" || rabbitMQUser == "" || rabbitMQPassword == "" || rabbitMQExchange == "" || rabbitMQQueue == "" {
 		//	TODO: add LogFatal
 	}
 
@@ -48,5 +50,6 @@ func loadRabbitMQ() RabbitMQConfig {
 		Password: rabbitMQPassword,
 		Vhost:    rabbitMQVhost,
 		Exchange: rabbitMQExchange,
+		Queue:    rabbitMQQueue,
 	}
 }

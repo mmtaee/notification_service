@@ -2,42 +2,42 @@ package consumers
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"log"
-	"notification/internal/handlers"
+	"notification/internal/providers"
+	"notification/pkg/logger"
 	"notification/pkg/rabbitmq"
-	"slices"
 	"sync"
 )
 
-func Consumer(ctx context.Context, rbtmq *rabbitmq.RabbitMQ) {
-	var wg sync.WaitGroup
+type Message struct {
+	Provider string   `json:"provider" validate:"required"`
+	Data     struct{} `json:"data" validate:"required"`
+}
 
-	queueName := ctx.Value("queueName").(string)
+func Consumer(ctx context.Context) {
 	workers := ctx.Value("workers").(int)
 
-	rbtmq.SetExchange()
-	queue := rbtmq.SetQueue(queueName)
-	rbtmq.SetRoutingKeys(queue, handlers.GetRoutingKeys())
+	rbtmq := rabbitmq.Get()
 
+	var wg sync.WaitGroup
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		consumerTag := uuid.New().String()
-		go worker(ctx, rbtmq, queue, &wg, consumerTag)
+		go worker(ctx, rbtmq, &wg, consumerTag)
 	}
 	wg.Wait()
 }
 
-func worker(ctx context.Context, rbtmq *rabbitmq.RabbitMQ, queue *amqp.Queue, wg *sync.WaitGroup, consumerTag string) {
+func worker(ctx context.Context, rbtmq *rabbitmq.RabbitMQ, wg *sync.WaitGroup, consumerTag string) {
 	defer wg.Done()
 
-	log.Println("worker", consumerTag, "started")
-
-	handler := handlers.NewHandler()
+	logger.Info("worker %s started", consumerTag)
 
 	messages, err := rbtmq.Channel.Consume(
-		queue.Name,
+		rbtmq.Queue.Name,
 		consumerTag, // Consumer tag
 		false,       // Auto-ack
 		false,       // Exclusive
@@ -46,8 +46,10 @@ func worker(ctx context.Context, rbtmq *rabbitmq.RabbitMQ, queue *amqp.Queue, wg
 		nil,         // Arguments
 	)
 	if err != nil {
-		log.Fatalf("Failed to consume messages: %v", err)
+		logger.Critical("Failed to consume messages: %v", err)
 	}
+
+	validation := validator.New()
 
 	for {
 		select {
@@ -55,18 +57,57 @@ func worker(ctx context.Context, rbtmq *rabbitmq.RabbitMQ, queue *amqp.Queue, wg
 			if msg.Body == nil {
 				return
 			}
-			log.Printf("Received a message: %s", msg.Body)
-			if slices.Contains(handlers.GetRoutingKeys(), msg.RoutingKey) {
-				handler.Send(&msg)
-			} else {
-				log.Println("routing key not found")
-				//	TODO: add log warning
-				msg.Nack(false, false)
+			if rabbitmq.CheckRoutingKeys(msg.RoutingKey) {
+				var data Message
+				err = json.Unmarshal(msg.Body, &data)
+				if err != nil {
+					logger.Error("Error unmarshalling message: %v", err)
+					referralMessage(msg)
+					return
+				}
+				if err = validation.Struct(data); err != nil {
+					logger.Error("Error validating message: %v", err)
+					referralMessage(msg)
+					return
+				}
+				prv := findProvider(data.Provider)
+				if prv == nil {
+					logger.Error("provider %v not found", data.Provider)
+					referralMessage(msg)
+					return
+				}
+				err = prv.Process(&msg)
+				if err != nil {
+					logger.Error("Error consuming message: %v", err)
+					referralMessage(msg)
+					return
+				}
+				msg.Ack(false)
+				logger.Error("Consumed message: %v", data)
+				return
 			}
+			logger.Error("routing %s key not found", msg.RoutingKey)
+			referralMessage(msg)
+
 		case <-ctx.Done():
-			log.Println("🛑 Context canceled, stopping consumer...")
 			_ = rbtmq.Channel.Cancel(consumerTag, false) // Unregister the consumer
 			return
 		}
 	}
+}
+
+func referralMessage(msg amqp.Delivery) {
+	err := msg.Nack(false, false)
+	if err != nil {
+		logger.Error("Error Nack message: %v", err)
+		return
+	}
+}
+
+func findProvider(name string) providers.Provider {
+	provider, err := providers.FindProvider(name)
+	if err != nil {
+		return nil
+	}
+	return provider
 }

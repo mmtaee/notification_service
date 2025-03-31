@@ -1,6 +1,21 @@
-package models
+package kavenegar
 
-type KavenegarOTPSmsRequest struct {
+type SmsOTP struct {
+	Data struct {
+		To       string `json:"to" validate:"required"`
+		Code     string `json:"code" validate:"required"`
+		Template string `json:"template"`
+	} `json:"data"`
+}
+
+type Event struct {
+	Data struct {
+		To      string `json:"to" validate:"required"`
+		Message string `json:"message" validate:"required"`
+	} `json:"data"`
+}
+
+type OTPSmsRequest struct {
 	Receptor string `json:"receptor"`
 	Template string `json:"template"`
 	Token    string `json:"token"`
@@ -17,7 +32,7 @@ type Entry struct {
 	Cost       int    `json:"cost"`
 }
 
-type KavenegarOTPSmsResponse struct {
+type OTPSmsResponse struct {
 	Return struct {
 		Status  int    `json:"status"`
 		Message string `json:"message"`

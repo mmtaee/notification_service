@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"notification/pkg/configs"
 	"strings"
 	"time"
 )
 
-func request(url string, method string, body []byte) ([]byte, error) {
-	apiKey := configs.YcloudApiKey()
+func request(url string, method string, body []byte, apiKey string) ([]byte, error) {
 	client := http.Client{}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
