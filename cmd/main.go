@@ -50,6 +50,7 @@ func main() {
 	sig := <-quit
 	logger.Warning("Received signal: %s", sig)
 	rabbitmq.CloseConnection()
+	logger.Success("Shutdown complete")
 	logger.Close()
 }
 

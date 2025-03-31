@@ -82,13 +82,16 @@ func worker(ctx context.Context, rbtmq *rabbitmq.RabbitMQ, wg *sync.WaitGroup, c
 					referralMessage(msg)
 					return
 				}
-				msg.Ack(false)
-				logger.Error("Consumed message: %v", data)
+				err = msg.Ack(false)
+				if err != nil {
+					logger.Error("Error acknowledging message: %v", err)
+					return
+				}
+				logger.Success("Consumed message: %v", data)
 				return
 			}
 			logger.Error("routing %s key not found", msg.RoutingKey)
 			referralMessage(msg)
-
 		case <-ctx.Done():
 			_ = rbtmq.Channel.Cancel(consumerTag, false) // Unregister the consumer
 			return

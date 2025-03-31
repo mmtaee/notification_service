@@ -6,7 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"log"
+	"notification/pkg/logger"
 	"notification/pkg/phone_parser"
 	"os"
 )
@@ -20,7 +20,7 @@ type Ycloud struct {
 func NewYcloud() *Ycloud {
 	key := os.Getenv("YCLOUD_API_KEY")
 	if key == "" {
-		log.Fatal("YCloud_API_KEY environment variable not set")
+		logger.Critical("YCloud_API_KEY environment variable not set")
 	}
 	return &Ycloud{
 		apiKey:            key,

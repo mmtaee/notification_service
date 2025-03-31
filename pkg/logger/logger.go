@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -59,6 +60,7 @@ func (c *CustomLogger) logMessage(level, color string, msg string, args ...inter
 	if len(args) > 0 {
 		msg = fmt.Sprintf(msg, args...)
 	}
+	msg = strings.ToLower(msg)
 	msg = fmt.Sprintf(
 		"%s[%s] [%s] %s %s",
 		color,
@@ -87,11 +89,15 @@ func Error(msg string, args ...interface{}) {
 }
 
 func Critical(msg string, args ...interface{}) {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	msg = strings.ToLower(msg)
 	msg = fmt.Sprintf(
 		"%s[CRITICAL] [%s] %s %s",
 		Magenta,
 		time.Now().Format("2006-01-02 15:04:05"),
-		fmt.Sprintf(msg, args...),
+		msg,
 		Reset,
 	)
 	log.Println(msg)

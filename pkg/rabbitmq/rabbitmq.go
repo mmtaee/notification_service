@@ -3,8 +3,8 @@ package rabbitmq
 import (
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"log"
 	"notification/pkg/configs"
+	"notification/pkg/logger"
 	"slices"
 )
 
@@ -45,8 +45,7 @@ func connection(cfg configs.RabbitMQConfig) *amqp.Connection {
 		),
 	)
 	if err != nil {
-		log.Fatal(err)
-		//	TODO: log Fatal
+		logger.Critical("rabbitmq connection error:", err)
 	}
 	return c
 }

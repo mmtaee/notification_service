@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"log"
+	"notification/pkg/logger"
 	"notification/pkg/phone_parser"
 	"os"
 )
@@ -20,7 +20,7 @@ type Kavenegar struct {
 func NewKavenegar() *Kavenegar {
 	key := os.Getenv("KAVENEGAR_API_KEY")
 	if key == "" {
-		log.Fatal("KAVENEGAR_API_KEY environment variable not set")
+		logger.Critical("KAVENEGAR_API_KEY environment variable not set")
 	}
 	return &Kavenegar{
 		apiKey:            key,
