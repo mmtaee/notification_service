@@ -39,3 +39,16 @@ type OTPSmsResponse struct {
 	} `json:"return"`
 	Entries []Entry `json:"entries"`
 }
+
+type EventSmsRequest struct {
+	Receptor string `json:"receptor"`
+	Message  string `json:"message"`
+}
+
+type EventSmsResponse struct {
+	Return struct {
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+	} `json:"return"`
+	Entries []Entry `json:"entries"`
+}

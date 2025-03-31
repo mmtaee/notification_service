@@ -87,9 +87,47 @@ func (k *Kavenegar) smsOTP(msg *amqp.Delivery) error {
 }
 
 func (k *Kavenegar) callOTP(msg *amqp.Delivery) error {
-	return nil
+	return errors.New("kavenegar otp call is not yet supported")
 }
 
 func (k *Kavenegar) eventSms(msg *amqp.Delivery) error {
+	url := fmt.Sprintf("https://api.kavenegar.com/v1/%s/sms/send.json", k.apiKey)
+	var data Event
+	err := json.Unmarshal(msg.Body, &data)
+	if err != nil {
+		return err
+	}
+	if err = k.validator.Struct(data); err != nil {
+		return err
+	}
+
+	numObj, err := k.phoneNumberParser.Parse(data.Data.To)
+	if err != nil {
+		return err
+	}
+	if !numObj.IsIranNumber() {
+		return fmt.Errorf("phone number %s is not iran number", numObj.Number)
+	}
+	numObj = numObj.IranMasked()
+
+	body, err := json.Marshal(EventSmsRequest{
+		Receptor: numObj.Masked,
+		Message:  data.Data.Message,
+	})
+
+	response, err := request(url, "post", body)
+
+	var responseJson EventSmsResponse
+	err = json.Unmarshal(response, &responseJson)
+	if err != nil {
+		fmt.Println("Error unmarshalling response:", err)
+		return err
+	}
+	if responseJson.Return.Status != 200 {
+		return errors.New(responseJson.Return.Message)
+	}
+	if responseJson.Entries != nil {
+		//	TODO: log in db
+	}
 	return nil
 }
