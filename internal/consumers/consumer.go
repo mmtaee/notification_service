@@ -69,7 +69,7 @@ func worker(ctx context.Context, rbtmq *rabbitmq.RabbitMQ, wg *sync.WaitGroup, c
 					_ = msg.Nack(false, false)
 					return
 				}
-				
+
 				var prv providers.Provider
 				if prv, err = providers.FindProvider(data.Provider); err != nil {
 					logger.Error("invalid provider %s", data.Provider)
@@ -94,12 +94,4 @@ func worker(ctx context.Context, rbtmq *rabbitmq.RabbitMQ, wg *sync.WaitGroup, c
 			return
 		}
 	}
-}
-
-func findProvider(name string) providers.Provider {
-	provider, err := providers.FindProvider(name)
-	if err != nil {
-		return nil
-	}
-	return provider
 }
