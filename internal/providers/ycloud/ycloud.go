@@ -50,12 +50,7 @@ func (y *Ycloud) OTP(msg *amqp.Delivery) error {
 	if err != nil {
 		return err
 	}
-	if data.Data.Channel == "" {
-		data.Data.Channel = "sms"
-	}
-	if data.Data.Language == "" {
-		data.Data.Language = "en"
-	}
+
 	if err = y.validator.Struct(data); err != nil {
 		return err
 	}
@@ -69,17 +64,26 @@ func (y *Ycloud) OTP(msg *amqp.Delivery) error {
 		return fmt.Errorf("iran number %s does not allowd to send sms with ycloud provider", numObj.Masked)
 	}
 
-	url := "https://api.ycloud.com/v2/verify/verifications"
-	body, _ := json.Marshal(OTPRequest{
+	if data.Data.Channel == "" {
+		data.Data.Channel = "sms"
+	}
+	body := OTPRequest{
 		Channel:    data.Data.Channel,
 		To:         numObj.Masked,
 		Code:       data.Data.Code,
-		Brand:      data.Data.Brand,
 		ExternalID: uuid.New().String(),
-		Language:   data.Data.Language,
-	})
+	}
+	if data.Data.Brand != "" {
+		body.Brand = data.Data.Brand
+	}
+	if data.Data.Language != "" {
+		body.Language = data.Data.Language
+	}
 
-	response, err := request(url, "post", body, y.apiKey)
+	url := "https://api.ycloud.com/v2/verify/verifications"
+	bodyJson, _ := json.Marshal(body)
+
+	response, err := request(url, "post", bodyJson, y.apiKey)
 	if err != nil {
 		return err
 	}
